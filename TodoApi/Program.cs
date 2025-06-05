@@ -13,6 +13,9 @@ builder.Services.AddDbContext<TodoContext>(opt =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddScoped<IToDoRepository, TodoRepository>();
+builder.Services.AddScoped<ITodoService, TodoService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -21,6 +24,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.MapControllers();
 
 app.UseHttpsRedirection();
 

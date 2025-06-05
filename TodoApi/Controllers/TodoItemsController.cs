@@ -8,105 +8,57 @@ namespace TodoApi.Controllers
     [ApiController]
     public class TodoItemsController : ControllerBase
     {
-        private readonly TodoContext _context;
+        private readonly ITodoService _service;
 
-        public TodoItemsController(TodoContext context)
+        public TodoItemsController(ITodoService service)
         {
-            this._context = context;
+            this._service = service;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TodoItemDto>>> GetTodoItems()
         {
-            return await _context.TodoItems.Select(x => ItemToDTO(x)).ToListAsync();
+            return Ok(await _service.GetAllAsync());
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<TodoItemDto>> GetTodoItem(int id)
         {
-            var todoItem = await _context.TodoItems.FindAsync(id);
+            var item = await _service.GetByIdAsync(id);
+            if (item == null) return NotFound();
 
-            if (todoItem == null)
-            {
-                return NotFound();
-            }
-
-            return ItemToDTO(todoItem);
+            return Ok(item);
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> PutTodoItem(int id, TodoItemDto todoDto)
         {
-            if (id != todoDto.Id)
-            {
-                return BadRequest();
-            }
 
-            var todoItem = await _context.TodoItems.FindAsync(id);
-            if (todoItem == null)
-            {
-                return NotFound();
-            }
+            var updated = await _service.UpdateAsync(id, todoDto);
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException) when (!TodoItemExists(id))
-            {
-                return NotFound();
-            }
-
-            return NoContent();
+            return updated ? NoContent() : NotFound();
         }
 
         [HttpPost]
         public async Task<ActionResult<TodoItemDto>> PostTodoItem(TodoItemDto todoDto)
         {
-            var todoItem = new TodoItem
-            {
-                IsComplete = todoDto.IsComplete,
-                Name = todoDto.Name
-            };
 
-            _context.TodoItems.Add(todoItem);
-            await _context.SaveChangesAsync();
+            var created = await _service.CreateAsync(todoDto);
 
             return CreatedAtAction(
                 nameof(GetTodoItem),
-                new { id = todoItem.Id },
-                ItemToDTO(todoItem));
+                new { id = created.Id },
+                created
+            );
         }
 
         [HttpDelete]
-        public async Task<IActionResult> DeleteTodoItem(long id)
+        public async Task<IActionResult> DeleteTodoItem(int id)
         {
-            var todoItem = await _context.TodoItems.FindAsync(id);
-            if (todoItem == null)
-            {
-                return NotFound();
-            }
-            _context.TodoItems.Remove(todoItem);
-            await _context.SaveChangesAsync();
+            var deleted = await _service.DeleteAsync(id);
+            return deleted ? NoContent() : NotFound();
 
-            return NoContent();
         }
-
-
-        private bool TodoItemExists(long id)
-        {
-            return _context.TodoItems.Any(e => e.Id == id);
-        }
-
-
-        private static TodoItemDto ItemToDTO(TodoItem todoItem) =>
-            new TodoItemDto
-            {
-                Id = todoItem.Id,
-                Name = todoItem.Name,
-                IsComplete = todoItem.IsComplete
-            };
-
 
     }
 }
